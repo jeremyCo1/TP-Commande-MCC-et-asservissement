@@ -1,0 +1,4 @@
+shell.c:18:6:SHELL_init	16	static
+shell.c:29:6:SHELL	16	static
+shell.c:67:6:SHELL_help	8	static
+shell.c:71:6:HAL_UART_RxCpltCallback	16	static
