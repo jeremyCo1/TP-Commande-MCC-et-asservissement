@@ -13,6 +13,10 @@
 #include "gpio.h"
 
 #define MOTOR_ERROR_SPEED 10
+#define MOTOR_ENCODER_LEN 1000
+
+extern uint16_t motorAlpha;
+extern uint8_t motorStatus;
 
 uint8_t MOTOR_init();
 

@@ -19,6 +19,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
+#include "dma.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -39,7 +41,7 @@
 //#define UART_RX_BUFFER_SIZE 1
 //#define UART_TX_BUFFER_SIZE 1
 
-
+#define ENC_RESET_CNT 2147483648  // 2^32/2
 
 /* USER CODE END PD */
 
@@ -51,7 +53,8 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-// SHELL VAR
+// MOTOR speed
+uint16_t alpha = 500;
 
 /* USER CODE END PV */
 
@@ -97,12 +100,24 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_TIM1_Init();
+  MX_TIM7_Init();
+  MX_TIM2_Init();
+  MX_TIM3_Init();
+  MX_DMA_Init();
+  MX_ADC1_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+	HAL_TIM_Base_Start_IT(&htim7);
+	HAL_TIM_Base_Start_IT(&htim3);
+	HAL_TIM_Base_Start_IT(&htim4);
 
 	printf("\r\n -------------- TP ACTIONNEUR -------------- \r\n");
 
+	// ENCODER - Set the counter value at ARR/2
+	__HAL_TIM_SET_COUNTER(&htim2,ENC_RESET_CNT);
 	SHELL_init();
 	MOTOR_init();
+
 
   /* USER CODE END 2 */
 
@@ -163,8 +178,9 @@ void SystemClock_Config(void)
   }
   /** Initializes the peripherals clocks
   */
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART2|RCC_PERIPHCLK_ADC12;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
+  PeriphClkInit.Adc12ClockSelection = RCC_ADC12CLKSOURCE_SYSCLK;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
@@ -172,6 +188,22 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	if(GPIO_Pin == MOTOR_BUTTON_Pin){
+		if(motorStatus == 0){
+			MOTOR_start();
+		}else if(motorStatus == 1){
+			MOTOR_stop();
+		}
+	}
+	else if(GPIO_Pin == MOTOR_ENCODER_Z_Pin){
+		//		Calcul nb de cran sur roue codeuse
+		//		count = __HAL_TIM_GET_COUNTER(&htim2);
+		//		count = count/4;
+		//		printf("Nb de tick par tour : %ld \r\n",count);
+		//		__HAL_TIM_SET_COUNTER(&htim2,0);
+	}
+}
 
 /* USER CODE END 4 */
 
@@ -186,6 +218,46 @@ void SystemClock_Config(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
+	if(htim->Instance == TIM7){
+		if(motorAlpha > alpha){
+			alpha++;
+			MOTOR_setSpeed(alpha);
+		}else if(motorAlpha < alpha){
+			alpha--;
+			MOTOR_setSpeed(alpha);
+		}
+	}
+	if(htim->Instance == TIM3)
+	{
+		speed = (int32_t)__HAL_TIM_GET_COUNTER(&htim2);
+
+		speed -= ENC_RESET_CNT;
+		speed = 1 * speed * 60/(4*1000); //1sec
+
+		__HAL_TIM_SET_COUNTER(&htim2,ENC_RESET_CNT);
+	}
+	if(htim->Instance == TIM4)
+	{
+		HAL_ADC_Start_DMA(&hadc1, buf_ADC_DMA, 2);
+
+		// Conversion tension
+		float tension[2];
+		tension[0] = (float)(buf_ADC_DMA[0]) * 3.3/4095;
+		tension[1] = (float)(buf_ADC_DMA[1]) * 3.3/4095;
+
+		// Conversion courant
+		float courant[2];
+		courant[0] = (tension[0] - 2.5)*12.0;
+		courant[1] = (tension[1] - 2.5)*12.0;
+
+		courant[0] = courant[0]*1000;
+		courant[1] = courant[1]*1000;
+
+		buf_ADC[0] = (uint32_t)courant[0];
+		buf_ADC[1] = (uint32_t)courant[1];
+
+		HAL_ADC_Stop_DMA(&hadc1);
+	}
 
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM6) {

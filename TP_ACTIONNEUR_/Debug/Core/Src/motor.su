@@ -1,5 +1,0 @@
-motor.c:12:9:MOTOR_init	24	static
-motor.c:30:9:MOTOR_start	16	static
-motor.c:38:9:MOTOR_stop	16	static
-motor.c:46:9:MOTOR_setSpeed	24	static
-motor.c:60:6:HAL_GPIO_EXTI_Callback	16	static

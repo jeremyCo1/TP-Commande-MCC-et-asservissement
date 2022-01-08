@@ -15,6 +15,10 @@ uint8_t cptr_buf;
 
 char bufMotorSpeed[4];
 
+int32_t speed = 0;
+uint32_t buf_ADC_DMA[2];
+uint32_t buf_ADC[2];
+
 void SHELL_init(){
 	it_uart = 0;
 	msg[0] = 0;
@@ -39,6 +43,10 @@ void SHELL(){
 				MOTOR_start();
 			}else if(strcmp(bufMesg,"stop") == 0){
 				MOTOR_stop();
+			}else if(strcmp(bufMesg,"cnt") == 0){
+				printf("vitesse = %ld tr/min \r\n",speed);
+				printf("courant R = %lu mA \r\n",buf_ADC[0]);
+				printf("courant Y = %lu mA \r\n",buf_ADC[1]);
 			}else if(strcmp(bufMesg,"") == 0){
 			}else{
 				for(int i=0; i<4; i++){
@@ -46,7 +54,8 @@ void SHELL(){
 				}
 				bufMesg[6] = '\0';
 				if(strcmp(bufMesg,"speed=") == 0){
-					MOTOR_setSpeed(atoi(bufMotorSpeed));
+					motorAlpha = (uint16_t)atoi(bufMotorSpeed);
+					//MOTOR_setSpeed(atoi(bufMotorSpeed));
 				}else{
 					printf("Command not found\r\n");
 				}

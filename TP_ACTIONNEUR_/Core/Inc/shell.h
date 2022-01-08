@@ -17,6 +17,10 @@
 
 #define MSG_BUFFER_SIZE 20
 
+extern int32_t speed;
+extern uint32_t buf_ADC[2];
+extern uint32_t buf_ADC_DMA[2];
+
 void SHELL_init();
 void SHELL();
 
